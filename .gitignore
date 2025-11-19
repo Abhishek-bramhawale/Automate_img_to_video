@@ -1,0 +1,24 @@
+# Ignore media/output folders
+downloads/
+images/
+processed/
+
+# Common media files just in case
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.avi
+*.gif
+*.png
+*.jpg
+*.jpeg
+*.webp
+
+# OS/editor junk
+Thumbs.db
+.DS_Store
+*.log
+.idea/
+.vscode/
+
