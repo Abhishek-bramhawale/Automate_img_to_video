@@ -16,102 +16,17 @@ os.makedirs(processed_folder, exist_ok=True)
 brave_path = r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe"
 user_data_dir = r"C:\Users\sanji\AppData\Local\BraveSoftware\Brave-Browser\User Data"
 
-def check_and_bypass_turnstile(page, wait_time=25, check_timeout=40):
-    """
-    Detects and bypasses Cloudflare Turnstile if it appears
-    
-    Args:
-        page: Playwright page object
-        wait_time: How long to wait for turnstile to appear (default 25s)
-        check_timeout: Total timeout for the entire bypass process (default 40s)
-    
-    Returns True if bypass successful or no turnstile found, False if timeout
-    """
-    print(f"🔍 Monitoring for Cloudflare Turnstile (will wait up to {wait_time}s for it to appear)...")
-    start_time = time.time()
-    turnstile_found = False
-    
-    # Phase 1: Wait and watch for turnstile to appear
-    while time.time() - start_time < wait_time:
-        try:
-            # Check for Turnstile iframe
-            turnstile_iframe = page.query_selector("iframe[src*='challenges.cloudflare.com'], iframe[src*='turnstile']")
-            
-            if turnstile_iframe:
-                turnstile_found = True
-                print("⚠️  Cloudflare Turnstile detected! Attempting bypass...")
-                
-                # Give iframe time to fully load
-                time.sleep(2)
-                
-                # Switch to iframe context
-                frame = turnstile_iframe.content_frame()
-                
-                if frame:
-                    # Look for the checkbox/button to click
-                    checkbox = frame.query_selector("input[type='checkbox']")
-                    if checkbox:
-                        print("✅ Found checkbox, clicking...")
-                        checkbox.click()
-                        time.sleep(2)
-                    
-                    # Alternative: look for clickable label/span
-                    clickable = frame.query_selector("label, span[role='button'], div[role='button']")
-                    if clickable and not checkbox:
-                        print("✅ Found clickable element, clicking...")
-                        clickable.click()
-                        time.sleep(2)
-                    
-                    # Wait for verification to complete
-                    print("⏳ Waiting for verification...")
-                    
-                    # Wait up to 15 seconds for turnstile to disappear
-                    verification_start = time.time()
-                    while time.time() - verification_start < 15:
-                        if not page.query_selector("iframe[src*='challenges.cloudflare.com'], iframe[src*='turnstile']"):
-                            print("✅ Turnstile bypassed successfully!")
-                            return True
-                        time.sleep(0.5)
-                    
-                    print("⚠️  Verification taking longer than expected, continuing anyway...")
-                    return True
-                else:
-                    print("⚠️  Could not access iframe content, continuing...")
-                    return True
-                    
-        except Exception as e:
-            print(f"⚠️  Error during turnstile check: {e}")
-        
-        # Show progress every 5 seconds
-        elapsed = int(time.time() - start_time)
-        if elapsed % 5 == 0 and elapsed > 0:
-            print(f"⏳ Still waiting for Turnstile... ({elapsed}s / {wait_time}s)")
-        
-        time.sleep(1)
-    
-    # Phase 2: No turnstile appeared within wait time
-    if not turnstile_found:
-        print("✅ No Turnstile detected after waiting, proceeding...")
-        return True
-    
-    # Phase 3: Turnstile found but couldn't bypass
-    if time.time() - start_time >= check_timeout:
-        print("❌ Turnstile bypass timeout reached")
-        return False
-    
-    return True
-
 print("Checking if Brave is already running...")
 for proc in psutil.process_iter(['name']):
     if proc.info['name'] and 'brave' in proc.info['name'].lower():
-        print("⚠️  WARNING: Brave is already running! Close all Brave windows first.")
+        print("WARNING: Brave is already running! Close all Brave windows first.")
 
 with sync_playwright() as p:
     def handle_download(download):
         download_path = os.path.join(download_folder, download.suggested_filename)
         print(f"Download starting: {download.suggested_filename}")
         download.save_as(download_path)
-        print(f"✅ Download completed: {download_path}")
+        print(f"Download completed: {download_path}")
 
     browser = p.chromium.launch_persistent_context(
         user_data_dir=user_data_dir,
@@ -139,7 +54,7 @@ with sync_playwright() as p:
             image_files.append(os.path.join(images_folder, file))
     
     if not image_files:
-        print("❌ No images found in 'images' folder!")
+        print("No images found in 'images' folder!")
         browser.close()
         exit(1)
     
@@ -159,15 +74,15 @@ with sync_playwright() as p:
             time.sleep(5)
 
             if not os.path.exists(image_path):
-                print(f"❌ Image '{image_path}' not found!")
+                print(f"Image '{image_path}' not found!")
                 continue
 
             upload_input = page.query_selector("input[type='file']")
             if upload_input:
                 upload_input.set_input_files(image_path)
-                print("✅ Image uploaded")
+                print("Image uploaded")
             else:
-                print("❌ Upload input not found")
+                print("Upload input not found")
                 continue
 
             time.sleep(15)
@@ -175,9 +90,9 @@ with sync_playwright() as p:
             prompt_box = page.query_selector("textarea, input[type='text']")
             if prompt_box:
                 prompt_box.fill(prompt_text)
-                print("✅ Prompt filled")
+                print("Prompt filled")
             else:
-                print("❌ Prompt box not found")
+                print("Prompt box not found")
                 continue
 
             selected = False
@@ -185,10 +100,10 @@ with sync_playwright() as p:
                 if btn.inner_text().strip() == "540P":
                     btn.click()
                     selected = True
-                    print("✅ 540P selected")
+                    print("540P selected")
                     break
             if not selected:
-                print("❌ 540P button not found")
+                print("540P button not found")
                 continue
 
             time.sleep(1)
@@ -197,13 +112,12 @@ with sync_playwright() as p:
                 print("Clicking Generate...")
                 generate_btn.click()
                 
-                # 🔥 CHECK FOR TURNSTILE AFTER CLICKING GENERATE
-                # Wait up to 25 seconds for turnstile to appear, total timeout 40 seconds
+                # Check for Turnstile after clicking generate
                 if not check_and_bypass_turnstile(page, wait_time=25, check_timeout=40):
-                    print("❌ Failed to bypass Turnstile, skipping this image")
+                    print("Failed to bypass Turnstile, skipping this image")
                     continue
             else:
-                print("❌ Generate button not found")
+                print("Generate button not found")
                 continue
 
             print("Waiting for processing to complete...")
@@ -216,7 +130,7 @@ with sync_playwright() as p:
                 )
                 
                 if download_button:
-                    print("✅ Processing complete! Download button appeared.")
+                    print("Processing complete! Download button appeared.")
                     print("Clicking download button...")
                     
                     with page.expect_download() as download_info:
@@ -225,14 +139,14 @@ with sync_playwright() as p:
                     download = download_info.value
                     download_path = os.path.join(download_folder, download.suggested_filename)
                     download.save_as(download_path)
-                    print(f"✅ Download completed: {download_path}")
+                    print(f"Download completed: {download_path}")
                     
                 else:
-                    print("❌ Download button not found within timeout")
+                    print("Download button not found within timeout")
                     continue
                     
             except Exception as e:
-                print(f"❌ Error waiting for/downloading: {e}")
+                print(f"Error waiting for/downloading: {e}")
                 
                 try:
                     completion_text = page.wait_for_selector(
@@ -240,7 +154,7 @@ with sync_playwright() as p:
                         timeout=10000
                     )
                     if completion_text:
-                        print("✅ Processing complete detected via text")
+                        print("Processing complete detected via text")
                         
                         download_button = page.query_selector(
                             'button[class*="z-0 group relative inline-flex"]'
@@ -253,24 +167,24 @@ with sync_playwright() as p:
                             download = download_info.value
                             download_path = os.path.join(download_folder, download.suggested_filename)
                             download.save_as(download_path)
-                            print(f"✅ Download completed: {download_path}")
+                            print(f"Download completed: {download_path}")
                 except Exception as fallback_error:
                     print(f"Fallback also failed: {fallback_error}")
                     continue
 
-            # ✅ Move processed image to "processed" folder
+            # Move processed image to "processed" folder
             try:
                 dest = os.path.join(processed_folder, image_name)
                 shutil.move(image_path, dest)
-                print(f"✅ Moved processed image to: {dest}")
+                print(f"Moved processed image to: {dest}")
             except Exception as move_err:
-                print(f"❌ Could not move image: {move_err}")
+                print(f"Could not move image: {move_err}")
 
-            print(f"✅ Completed processing for {image_name}")
+            print(f"Completed processing for {image_name}")
             time.sleep(3)
 
         except Exception as e:
-            print(f"❌ Error processing {image_name}: {e}")
+            print(f"Error processing {image_name}: {e}")
             continue
 
     print(f"\n{'='*60}")
@@ -284,8 +198,8 @@ with sync_playwright() as p:
             file_path = os.path.join(download_folder, file)
             print(f"  - {file} (size: {os.path.getsize(file_path)} bytes)")
     else:
-        print("❌ No files found in download folder")
+        print("No files found in download folder")
 
     print("\nClosing browser...")
     browser.close()
-    print("✅ Browser closed. All images processed!")
+    print("Browser closed. All images processed!")
